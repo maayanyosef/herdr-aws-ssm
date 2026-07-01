@@ -1,6 +1,6 @@
 id = "herdr-aws-ssm"
 name = "herdr-aws-ssm"
-version = "0.1.0"
+version = "0.1.1"
 min_herdr_version = "0.7.0"
 description = "Connect to EC2 instances over AWS SSM via herdr --remote (ephemeral EC2 Instance Connect keys)."
 platforms = ["linux", "macos"]

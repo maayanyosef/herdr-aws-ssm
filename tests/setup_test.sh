@@ -20,6 +20,9 @@ test_writes_block_once() {
   assert_eq "1" "$n" one-open-marker || return 1
   assert_contains "$(cat "$h/.ssh/config")" "Host i-* mi-*" host-line || return 1
   assert_contains "$(cat "$h/.ssh/config")" "bin/proxy.sh %h %p %r" proxy-line || return 1
+  # ProxyCommand must bake in the config dir so proxy.sh can resolve the AWS
+  # profile when ssh runs it for a bare `herdr --remote` (no HERDR_PLUGIN_* env).
+  assert_contains "$(cat "$h/.ssh/config")" "HERDR_PLUGIN_CONFIG_DIR=" proxy-env || return 1
 }
 
 test_idempotent() {

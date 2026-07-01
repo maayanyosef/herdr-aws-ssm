@@ -30,13 +30,17 @@ fi
 default_user="$HERDR_SSM_OSUSER"
 [ "$default_user" = "auto" ] && default_user="ec2-user"
 
-# Build managed block.
+# Build managed block. The ProxyCommand bakes in the resolved plugin paths via
+# `env`, because ssh runs it for a bare `herdr --remote` in an environment where
+# none of herdr's HERDR_PLUGIN_* vars are set. Without this, proxy.sh can't find
+# config.env (so it can't resolve the AWS profile) and would look for the SSH key
+# in a different state dir than the IdentityFile above.
 block="$(cat <<EOF
 $BEGIN
 Host i-* mi-*
   User $default_user
   IdentityFile $STATE/id_ed25519
-  ProxyCommand $ROOT/bin/proxy.sh %h %p %r
+  ProxyCommand /usr/bin/env HERDR_PLUGIN_CONFIG_DIR=$CONFIG_DIR HERDR_PLUGIN_STATE_DIR=$STATE HERDR_PLUGIN_ROOT=$ROOT $ROOT/bin/proxy.sh %h %p %r
   StrictHostKeyChecking accept-new
 $END
 EOF
