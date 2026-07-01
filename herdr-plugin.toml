@@ -1,0 +1,24 @@
+id = "herdr-aws-ssm"
+name = "herdr-aws-ssm"
+version = "0.1.0"
+min_herdr_version = "0.7.0"
+description = "Connect to EC2 instances over AWS SSM via herdr --remote (ephemeral EC2 Instance Connect keys)."
+platforms = ["linux", "macos"]
+
+[[actions]]
+id = "connect"
+title = "SSM connect (herdr --remote)"
+contexts = ["workspace"]
+command = ["bash", "bin/connect.sh"]
+
+[[actions]]
+id = "setup"
+title = "SSM: install ssh config"
+contexts = ["workspace"]
+command = ["bash", "bin/setup.sh"]
+
+[[actions]]
+id = "doctor"
+title = "SSM: doctor / preflight"
+contexts = ["workspace"]
+command = ["bash", "bin/doctor.sh"]
