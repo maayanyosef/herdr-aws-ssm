@@ -14,7 +14,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # This plugin is pure Bash and is installed by cloning the repo (there is
       # no compiled artifact). A release therefore just tags a version, runs the

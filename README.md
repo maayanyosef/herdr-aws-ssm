@@ -15,7 +15,7 @@ account using your existing CLI profiles.
 
 ## Why you'd want it
 
-- **`herdr --remote`, over SSM.** You get herdr's full thin client — remote herdr
+- **`herdr --remote`, over SSM.** You get herdr full thin client — remote herdr
   install, clipboard bridge, persistent session that survives detach/reattach —
   but the transport is an SSM `AWS-StartSSHSession` tunnel instead of a reachable
   SSH endpoint. Private-subnet boxes with no inbound work fine.
@@ -37,7 +37,7 @@ account using your existing CLI profiles.
   configure (Name tag, id, type, AZ), and marks each with its SSM reachability
   (`ssm:Online`) so you don't pick a target the agent can't reach.
 - **Pick fast** — a fuzzy picker (`fzf` if installed, a numbered menu otherwise);
-  `prod`-labelled targets are flagged and gated behind a typed confirmation.
+  `prod`- labeled targets are flagged and gated behind a typed confirmation.
 - **Detect the SSH user** — resolves the login user from the picked instance's
   AMI and connects as `herdr --remote <user>@<id>`, so the login user always
   matches the ephemeral key that was pushed.
@@ -50,8 +50,8 @@ account using your existing CLI profiles.
 ## Quick start
 
 ```bash
-# 1. Install the plugin (replace <owner> with the account hosting this repo):
-herdr plugin install <owner>/herdr-aws-ssm
+# 1. Install the plugin:
+herdr plugin install maayanyosef/herdr-aws-ssm
 
 # 2. Make sure the AWS CLI v2 + Session Manager plugin are installed (see below),
 #    and that a profile is authenticated:
@@ -78,11 +78,11 @@ a herdr built-in.)
 
 ## Actions
 
-| Action | id | What it does |
-| --- | --- | --- |
-| **SSM connect (herdr --remote)** | `connect` | List instances → pick → detect user → confirm prod → `herdr --remote <user>@<id>` |
-| **SSM: install ssh config** | `setup` | Write the managed `~/.ssh/config` block + a starter config; run once |
-| **SSM: doctor / preflight** | `doctor` | Verify AWS CLI, `session-manager-plugin`, `herdr`, and live credentials per profile |
+| Action                           | id        | What it does                                                                        |
+|----------------------------------|-----------|-------------------------------------------------------------------------------------|
+| **SSM connect (herdr --remote)** | `connect` | List instances → pick → detect user → confirm prod → `herdr --remote <user>@<id>`   |
+| **SSM: install ssh config**      | `setup`   | Write the managed `~/.ssh/config` block + a starter config; run once                |
+| **SSM: doctor / preflight**      | `doctor`  | Verify AWS CLI, `session-manager-plugin`, `herdr`, and live credentials per profile |
 
 ## How it works
 
@@ -151,7 +151,7 @@ configuration at all.
 | Var                  | Default                                             | Meaning                                     |
 |----------------------|-----------------------------------------------------|---------------------------------------------|
 | `HERDR_SSM_PROFILES` | `default=$AWS_PROFILE` (or `default`)               | Space-separated `env=aws-profile` pairs     |
-| `HERDR_SSM_REGION`   | `$AWS_REGION` → `$AWS_DEFAULT_REGION` → `us-east-1`  | AWS region to search/connect in            |
+| `HERDR_SSM_REGION`   | `$AWS_REGION` → `$AWS_DEFAULT_REGION` → `us-east-1` | AWS region to search/connect in             |
 | `HERDR_SSM_OSUSER`   | `auto`                                              | SSH login user; `auto` detects from the AMI |
 
 - **`HERDR_SSM_PROFILES`** — each `env` label is arbitrary. Any label named

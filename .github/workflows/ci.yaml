@@ -14,12 +14,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # ubuntu = modern bash 5; macos = system bash 3.2 (the compatibility
+        # ubuntu = modern bash 5; macOS = system bash 3.2 (the compatibility
         # floor this plugin targets). Running both guards the 3.2 constraint.
         os: [ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: bash version
         run: bash --version | head -1
@@ -52,7 +52,7 @@ jobs:
     name: shellcheck
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Install shellcheck
         run: sudo apt-get update && sudo apt-get install -y shellcheck
       - name: Lint scripts
