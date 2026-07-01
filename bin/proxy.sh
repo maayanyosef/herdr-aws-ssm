@@ -33,19 +33,39 @@ resolve_profile() {
 }
 profile="$(resolve_profile)" || { hs_err "cannot resolve AWS profile for $host"; exit 1; }
 
-# Ephemeral keypair: regenerate if missing or older than ~50s.
-# Guard age >= 0 to handle clock skew (future mtime would yield negative age,
-# which would be treated as permanently fresh and cause SSM's key window to expire).
-needs_key=1
-if [ -f "$key" ]; then
-  age=$(( $(date +%s) - $(stat -f %m "$key" 2>/dev/null || stat -c %Y "$key") ))
-  [ "$age" -ge 0 ] && [ "$age" -lt 50 ] && needs_key=0
-fi
-if [ "$needs_key" -eq 1 ]; then
-  rm -f "$key" "$key.pub"
-  ssh-keygen -t ed25519 -N '' -q -f "$key" -C "herdr-aws-ssm-ephemeral"
-  chmod 600 "$key"
-fi
+# Ensure a local keypair exists (generate once, then reuse). The *ephemeral*
+# part is the EC2 Instance Connect push below — authorized for ~60s per
+# connection — not the local key file. Reusing the key is what makes herdr's
+# two near-simultaneous ssh connections (platform detection + the bridge) safe:
+# if they both regenerated a shared key file they would race and leave the
+# private key and its .pub from different generations, so ssh refuses to sign
+# ("private key contents do not match public"). Generation is guarded by a
+# portable mkdir lock (macOS has no flock) and only happens when the key is
+# missing, so steady-state connections never regenerate and cannot race.
+ensure_key() {
+  [ -f "$key" ] && [ -f "$key.pub" ] && return 0
+  local lock="$state/.keygen.lock" i age
+  for i in $(seq 1 100); do
+    if mkdir "$lock" 2>/dev/null; then
+      if [ ! -f "$key" ] || [ ! -f "$key.pub" ]; then
+        rm -f "$key" "$key.pub"
+        ssh-keygen -t ed25519 -N '' -q -f "$key" -C "herdr-aws-ssm"
+        chmod 600 "$key"
+      fi
+      rmdir "$lock" 2>/dev/null || true
+      return 0
+    fi
+    # Steal a stale lock left by a crashed run (>10s old).
+    if [ -d "$lock" ]; then
+      age=$(( $(date +%s) - $(stat -f %m "$lock" 2>/dev/null || stat -c %Y "$lock" 2>/dev/null || echo 0) ))
+      [ "$age" -ge 10 ] && rmdir "$lock" 2>/dev/null || true
+    fi
+    [ -f "$key" ] && [ -f "$key.pub" ] && return 0
+    sleep 0.1
+  done
+  [ -f "$key" ] && [ -f "$key.pub" ]
+}
+ensure_key || { hs_err "could not create SSH key in $state"; exit 1; }
 
 az="$(aws ec2 describe-instances --instance-ids "$host" \
         --profile "$profile" --region "$region" \

@@ -71,6 +71,21 @@ test_osuser_from_arg() {
   assert_contains "$out" "--instance-os-user ec2-user" osuser-from-arg || return 1
 }
 
+test_reuses_key_across_runs() {
+  # The key must persist across invocations (no per-run regeneration), so
+  # herdr's concurrent detection + bridge ssh connections can't race on it.
+  local d; d="$(mktemp -d)"; mock_aws "$d/bin"; local st="$d/state"
+  PATH="$d/bin:/usr/bin:/bin" HS_PROXY_PRINT=1 HERDR_SSM_PROFILE=p \
+    HERDR_SSM_REGION=us-east-1 HERDR_SSM_OSUSER=ubuntu HERDR_PLUGIN_STATE_DIR="$st" \
+    bash "$ROOT/bin/proxy.sh" i-abc 22 ubuntu >/dev/null 2>&1
+  local first; first="$(cat "$st/id_ed25519.pub")"
+  PATH="$d/bin:/usr/bin:/bin" HS_PROXY_PRINT=1 HERDR_SSM_PROFILE=p \
+    HERDR_SSM_REGION=us-east-1 HERDR_SSM_OSUSER=ubuntu HERDR_PLUGIN_STATE_DIR="$st" \
+    bash "$ROOT/bin/proxy.sh" i-abc 22 ubuntu >/dev/null 2>&1
+  local second; second="$(cat "$st/id_ed25519.pub")"
+  assert_eq "$first" "$second" key-persists || return 1
+}
+
 test_az_none_fails() {
   local d; d="$(mktemp -d)"; mock_aws_no_az "$d/bin"
   if PATH="$d/bin:/usr/bin:/bin" HS_PROXY_PRINT=1 \

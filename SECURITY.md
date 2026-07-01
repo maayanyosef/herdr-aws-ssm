@@ -8,13 +8,14 @@ into the repo.
 
 ## Threat model & mitigations
 
-- **No long-lived keys.** Authentication uses **ephemeral** EC2 Instance Connect
-  keys: `bin/proxy.sh` generates an `ed25519` keypair, pushes the public key with
-  `ec2-instance-connect send-ssh-public-key` (valid ~60s), and opens the SSM SSH
-  session immediately. Nothing is installed on the instance's `authorized_keys`;
-  the pushed key expires on its own. The private key lives only in the plugin's
-  state dir (`chmod 700` dir, `0600` key), is regenerated when stale, and is
-  never printed or logged.
+- **No long-lived authorization.** Authentication uses **EC2 Instance Connect**:
+  on every connection `bin/proxy.sh` pushes an SSH public key with
+  `ec2-instance-connect send-ssh-public-key` (authorized for ~60s) and opens the
+  SSM SSH session immediately. Nothing is added to the instance's
+  `authorized_keys`; the pushed authorization expires on its own. The local
+  `ed25519` keypair is generated once (`0600` key in a `chmod 700` state dir)
+  and reused across connections — only its short-lived *push* grants access — and
+  it is never printed or logged.
 
 - **No secrets in the repo.** Credentials are never read from or written to the
   repository. Configuration holds only AWS profile *names* and a region — no
