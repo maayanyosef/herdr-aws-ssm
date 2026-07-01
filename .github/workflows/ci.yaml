@@ -49,11 +49,8 @@ jobs:
           PY
 
   shellcheck:
-    # Advisory: surfaces lint findings without blocking. Flip continue-on-error
-    # to false to make it a hard gate once you've reviewed the output.
-    name: shellcheck (advisory)
+    name: shellcheck
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - name: Install shellcheck

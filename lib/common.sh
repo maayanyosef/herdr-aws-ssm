@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # Shared helpers for herdr-aws-ssm. Source, do not execute.
 hs_log() { printf '%s\n' "$*" >&2; }
 hs_err() { printf 'herdr-aws-ssm: %s\n' "$*" >&2; }
