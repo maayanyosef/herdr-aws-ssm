@@ -49,22 +49,43 @@ account using your existing CLI profiles.
 
 ## Quick start
 
+Prereqs: AWS CLI v2 + the Session Manager plugin installed (see
+[below](#installing-the-session-manager-plugin)), and a herdr 0.7+.
+
 ```bash
-# 1. Install the plugin:
+# 1. Install the plugin.
 herdr plugin install maayanyosef/herdr-aws-ssm
 
-# 2. Make sure the AWS CLI v2 + Session Manager plugin are installed (see below),
-#    and that a profile is authenticated:
-aws sso login --profile my-profile      # or any credential source
+# 2. (optional) Point it at your AWS profiles. With no config it uses your
+#    current AWS context ($AWS_PROFILE/$AWS_REGION). To search specific
+#    accounts, drop a config.env in the plugin's config dir (printed on install):
+mkdir -p ~/.config/herdr/plugins/config/herdr-aws-ssm
+cat > ~/.config/herdr/plugins/config/herdr-aws-ssm/config.env <<'EOF'
+HERDR_SSM_PROFILES="dev=my-dev-profile prod=my-prod-profile"
+HERDR_SSM_REGION="us-east-1"
+HERDR_SSM_OSUSER="auto"
+EOF
 
-# 3. Install the ssh-config transport once, then check everything:
-#    run the "SSM: install ssh config" and "SSM: doctor / preflight" actions.
+# 3. Authenticate to AWS (any profile the picker will list).
+aws sso login --profile my-dev-profile
+
+# 4. Install the ssh-config transport (once), then preflight.
+herdr plugin action invoke setup  --plugin herdr-aws-ssm
+herdr plugin action invoke doctor --plugin herdr-aws-ssm
 ```
 
-Then **bind a key** in your herdr config (`~/.config/herdr/config.toml`) so one
-press opens the picker:
+`doctor` should report `ok` for `aws` / `session-manager-plugin` / `herdr` and
+`ok sso <env>` for each logged-in profile. Action output goes to the herdr plugin
+log rather than your terminal; to see the results directly, run the installed
+script (its path is shown by `herdr plugin list`), e.g.
+`bash ~/.config/herdr/plugins/github/herdr-aws-ssm-*/bin/doctor.sh`.
+
+**5. Connect.** `connect` is interactive (it shows a picker, then hands off to
+`herdr --remote`), so run it where it has a terminal — **bind a key** and press
+it inside herdr (recommended), rather than a detached `plugin action invoke`:
 
 ```toml
+# ~/.config/herdr/config.toml
 [[keys.command]]
 key = "prefix+e"            # pick any free combo
 type = "plugin_action"
@@ -72,9 +93,12 @@ command = "herdr-aws-ssm.connect"
 description = "SSM connect to an EC2 instance"
 ```
 
-Run `herdr server reload-config`, then press your key, pick an instance, and
-you're in. (No keybinding is forced by the plugin — it would risk colliding with
-a herdr built-in.)
+Run `herdr server reload-config`, press your key, pick an instance — you're in.
+(No keybinding is forced by the plugin, to avoid colliding with a herdr built-in.)
+
+Once `setup` has run, a bare `herdr --remote <instance-id>` also works, e.g.
+`herdr --remote i-0123456789abcdef0`. Production targets (any profile labelled
+`prod`) require typing `yes-prod` before they connect.
 
 ## Actions
 
