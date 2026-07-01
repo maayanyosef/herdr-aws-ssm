@@ -1,0 +1,59 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    name: publish release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      # This plugin is pure Bash and is installed by cloning the repo (there is
+      # no compiled artifact). A release therefore just tags a version, runs the
+      # tests, and publishes generated notes + a source tarball. Fail fast if the
+      # pushed tag disagrees with the herdr-plugin.toml version, so we never
+      # publish a release whose manifest doesn't match the tag herdr installs.
+      - name: Verify tag matches herdr-plugin.toml version
+        shell: bash
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          manifest="$(grep -E '^version *= *"' herdr-plugin.toml | head -n1 | sed -E 's/^version *= *"([^"]+)".*/\1/')"
+          if [ "$tag" != "$manifest" ]; then
+            echo "tag $GITHUB_REF_NAME ($tag) != herdr-plugin.toml version ($manifest)" >&2
+            exit 1
+          fi
+          echo "version ok: $tag"
+
+      - name: Run test suite
+        shell: bash
+        run: |
+          chmod +x bin/*.sh
+          for t in tests/*_test.sh; do echo "== $t"; bash "$t"; done
+
+      - name: Package plugin tarball + checksum
+        shell: bash
+        run: |
+          mkdir -p dist
+          base="herdr-aws-ssm-${GITHUB_REF_NAME}"
+          git archive --format=tar.gz --prefix="herdr-aws-ssm/" -o "dist/${base}.tar.gz" HEAD
+          cd dist
+          sha256sum ./*.tar.gz > SHA256SUMS
+          echo "--- SHA256SUMS ---"; cat SHA256SUMS
+
+      - name: Create-or-update the release and upload assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REF_NAME: ${{ github.ref_name }}
+          REPO: ${{ github.repository }}
+        run: |
+          gh release view "$REF_NAME" --repo "$REPO" >/dev/null 2>&1 \
+            || gh release create "$REF_NAME" --repo "$REPO" --title "$REF_NAME" --generate-notes
+          gh release upload "$REF_NAME" dist/* --clobber --repo "$REPO"

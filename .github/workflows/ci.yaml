@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: test (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        # ubuntu = modern bash 5; macos = system bash 3.2 (the compatibility
+        # floor this plugin targets). Running both guards the 3.2 constraint.
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: bash version
+        run: bash --version | head -1
+
+      - name: Run test suite
+        shell: bash
+        run: |
+          chmod +x bin/*.sh
+          fail=0
+          for t in tests/*_test.sh; do
+            echo "== $t"
+            bash "$t" || fail=1
+          done
+          exit $fail
+
+      - name: Validate herdr-plugin.toml
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import tomllib
+          m = tomllib.load(open("herdr-plugin.toml", "rb"))
+          for f in ("id", "name", "version", "min_herdr_version"):
+              assert f in m, f"missing {f}"
+          acts = {a["id"] for a in m.get("actions", [])}
+          assert {"connect", "setup", "doctor"} <= acts, f"actions={acts}"
+          print("manifest ok:", m["id"], m["version"])
+          PY
+
+  shellcheck:
+    # Advisory: surfaces lint findings without blocking. Flip continue-on-error
+    # to false to make it a hard gate once you've reviewed the output.
+    name: shellcheck (advisory)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install shellcheck
+        run: sudo apt-get update && sudo apt-get install -y shellcheck
+      - name: Lint scripts
+        run: shellcheck --severity=warning bin/*.sh lib/*.sh tests/*.sh
